@@ -16,6 +16,7 @@ DebugConfig/
 
 # Keil project user settings (contains local paths)
 *.uvguix.*
+EventRecorderStub.scvd
 
 # STM32CubeMX
 .mxproject
