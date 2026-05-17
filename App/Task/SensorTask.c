@@ -1,6 +1,6 @@
 #include "cmsis_os.h"
 #include "AD.h"
-#include "senor.h"
+#include "sensor.h"
 
 extern osMessageQueueId_t sensorQueueScreenHandle;
 extern osMessageQueueId_t sensorQueueCommHandle;
