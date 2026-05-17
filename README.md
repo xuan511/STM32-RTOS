@@ -8,40 +8,46 @@
 
 ## 系统架构
 
-```mermaid
-graph LR
-    subgraph Hardware["外设"]
-        LIGHT["光敏电阻<br/>PA0"]
-        NTC["NTC热敏<br/>PA1"]
-        KEY1["Key1<br/>PB0"]
-        KEY2["Key2<br/>PB11"]
-        OLED["OLED SSD1306<br/>I2C PB8/9"]
-        BUZZER["Buzzer<br/>TIM2_CH3 PA2"]
-        LED1["LED1<br/>PA6"]
-    end
-
-    subgraph MCU["STM32F103C8T6 + FreeRTOS"]
-        ADC["ADC1<br/>DMA CIRCULAR"]
-        SENSOR["SensorTask<br/>均值滤波+NTC拟合<br/>500ms"]
-        SCREEN["ScreenTask<br/>OLED刷新<br/>事件驱动"]
-        COMM["CommTask<br/>UART上报<br/>事件驱动"]
-        INPUT["InputTask<br/>按键消抖<br/>20ms"]
-        Q1["sensorQueueScreen<br/>4 × 12B"]
-        Q2["sensorQueueComm<br/>10 × 12B"]
-    end
-
-    LIGHT --> ADC
-    NTC --> ADC
-    ADC --> SENSOR
-    SENSOR --> Q1 --> SCREEN
-    SENSOR --> Q2 --> COMM
-    SCREEN --> OLED
-    COMM --> PC["PC上位机<br/>USART1 115200bps"]
-    INPUT -->|volatile g_ctrl| SCREEN
-    KEY1 --> INPUT
-    KEY2 --> INPUT
-    SCREEN --> BUZZER
-    SCREEN --> LED1
+```
+                     ┌──────────────────────────────────┐
+                     │      STM32F103C8T6               │
+                     │      FreeRTOS v10.3.1            │
+                     │                                  │
+   Light ─ PA0  ──┐  │  ┌────────────┐                 │
+   NTC   ─ PA1  ──┤  │  │    ADC1    │                 │
+                  ├──┼─→│  DMA CIRC  │                 │
+                  │  │  └─────┬──────┘                 │
+                  │  │        │                         │
+                  │  │        ▼                         │
+                  │  │  ┌───────────┐                   │
+                  │  │  │SensorTask │                   │
+                  │  │  │500ms      │                   │
+                  │  │  └─┬──────┬──┘                   │
+                  │  │    │      │                      │
+                  │  │    ▼      ▼                      │
+                  │  │  ┌───┐  ┌───┐                    │
+                  │  │  │Q1 │  │Q2 │                    │
+                  │  │  │4x │  │10x│                    │
+                  │  │  └─┬─┘  └─┬─┘                    │
+                  │  │    │      │                      │
+   Key1 ─ PB0 ─┐  │  │    ▼      ▼                      │
+   Key2 ─ PB11 ─┤  │  │ ┌─────┐ ┌──────┐               │
+               ├──┼──┼→│Input│ │Screen│  │Comm │       │
+               │  │  │ │20ms │ │Task  │  │Task  │       │
+               │  │  │ └──┬──┘ └──┬───┘  └──┬───┘       │
+               │  │  │    │       │         │            │
+               │  │  │    │  ┌────┘         │            │
+               │  │  │    │  │              │            │
+               │  │  │    │  ▼    ┌─────────┘            │
+               │  │  │    │ OLED  │ UART TX              │
+               │  │  │    │ I2C   │ 115200               │
+               │  │  │    │ Buzzer│                      │
+               │  │  │    │ LED1  │                      │
+               │  │  └────┴───────┴──────────────────────┘
+               │  │
+   PC ─────────┼──┼── USART1 (PA9/PA10)
+               │  │
+               └──┘
 ```
 
 ### 任务设计
@@ -77,7 +83,6 @@ SensorTask ──sensorQueueComm  (10×12B)─→ CommTask     (传感器数据)
 | Key2 | GPIO Input | PB11 (上拉) | 切换报警使能 |
 | Buzzer | TIM2_CH3 PWM | PA2 | 动态变频报警音 |
 | LED1 | GPIO Output | PA6 | 报警指示灯 |
-| LED2 | GPIO Output | PA7 | 心跳指示灯 |
 | USART1 | UART | PA9-TX, PA10-RX | 115200bps, 上位机通信 |
 
 ## 软件架构
