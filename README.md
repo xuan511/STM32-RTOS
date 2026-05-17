@@ -5,42 +5,43 @@
 ## 实物展示
 <img width="1280" height="720" alt="32c3be54d0e3b6142dafd826b3a3dc9a_720" src="https://github.com/user-attachments/assets/d9131027-49c3-449e-8b2f-25f76bf9a02f" />
 
-> 踩坑记录：[调试过程遇到的问题与修复](#调试过程遇到的问题与修复)
 
 ## 系统架构
 
-```
-                       ┌─────────────────────────┐
-                       │       STM32F103C8T6      │
-                       │       FreeRTOS v10.3.1   │
-                       │                          │
-  ┌─────────┐          │  ┌──────────────────┐   │
-  │ 光敏电阻 │─ PA0 ────┼─→│  ADC1 双通道       │   │
-  │ NTC热敏  │─ PA1 ────┼─→│  DMA CIRCULAR 模式  │   │
-  └─────────┘          │  └────────┬─────────┘   │
-                       │           │              │
-  ┌─────────┐          │           ▼              │
-  │  Key1   │─ PB0 ─┐  │  ┌───────────────┐      │
-  │  Key2   │─ PB11 ─┤  │  │  SensorTask   │      │
-  └─────────┘        │  │  │  (均值滤波+NTC  │      │
-                       │  │  │   二次拟合)    │      │
-  ┌─────────┐        │  │  └───┬───────┬───┘      │
-  │  OLED   │ I2C ───┼──┼──────┤       │          │
-  │ SSD1306 │ PB8/9  │  │      │       │          │
-  └─────────┘        │  │  ┌───▼──┐ ┌──▼───┐     │
-                       │  │  │Screen│ │Comm   │     │
-  ┌─────────┐        │  │  │Task  │ │Task   │     │
-  │  Buzzer │─ PA2 ──┼──┼──┤OLED  │ │UART TX│     │
-  └─────────┘        │  │  └──────┘ └──────┘     │
-                       │  │                          │
-  ┌─────────┐        │  │  ┌──────────────┐        │
-  │  LED1   │─ PA6 ──┼──┼──┤  InputTask   │        │
-  │  LED2   │─ PA7 ──┼──┼──┤  (按键扫描    │        │
-  └─────────┘        │  │  │   状态控制)   │        │
-                       │  │  └──────────────┘        │
-                       │  └──────────────────────────┘
-                       │
-  PC ─── USB-TTL ──────┼── PA9/PA10 (USART1 115200bps)
+```mermaid
+graph LR
+    subgraph Hardware["外设"]
+        LIGHT["光敏电阻<br/>PA0"]
+        NTC["NTC热敏<br/>PA1"]
+        KEY1["Key1<br/>PB0"]
+        KEY2["Key2<br/>PB11"]
+        OLED["OLED SSD1306<br/>I2C PB8/9"]
+        BUZZER["Buzzer<br/>TIM2_CH3 PA2"]
+        LED1["LED1<br/>PA6"]
+    end
+
+    subgraph MCU["STM32F103C8T6 + FreeRTOS"]
+        ADC["ADC1<br/>DMA CIRCULAR"]
+        SENSOR["SensorTask<br/>均值滤波+NTC拟合<br/>500ms"]
+        SCREEN["ScreenTask<br/>OLED刷新<br/>事件驱动"]
+        COMM["CommTask<br/>UART上报<br/>事件驱动"]
+        INPUT["InputTask<br/>按键消抖<br/>20ms"]
+        Q1["sensorQueueScreen<br/>4 × 12B"]
+        Q2["sensorQueueComm<br/>10 × 12B"]
+    end
+
+    LIGHT --> ADC
+    NTC --> ADC
+    ADC --> SENSOR
+    SENSOR --> Q1 --> SCREEN
+    SENSOR --> Q2 --> COMM
+    SCREEN --> OLED
+    COMM --> PC["PC上位机<br/>USART1 115200bps"]
+    INPUT -->|volatile g_ctrl| SCREEN
+    KEY1 --> INPUT
+    KEY2 --> INPUT
+    SCREEN --> BUZZER
+    SCREEN --> LED1
 ```
 
 ### 任务设计
@@ -110,7 +111,7 @@ STM32-RTOS/
 **1. DMA CIRCULAR 循环模式**
 - 双通道 × 10 深度缓冲区，DMA 自动回绕写，CPU 零参与
 - `AD_Init()` 只在任务启动后调用一次，避免重复启动导致 HAL_BUSY
-- 详见下文调试过程
+> 踩坑记录：[调试过程遇到的问题与修复](#调试过程遇到的问题与修复)
 
 **2. NTC 温度计算**
 - 用二次曲线拟合替代 `logf()` 浮点对数运算
