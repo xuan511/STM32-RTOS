@@ -59,21 +59,21 @@ osThreadId_t SensorTaskHandle;
 const osThreadAttr_t SensorTask_attributes = {
   .name = "SensorTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for ScreenTask */
 osThreadId_t ScreenTaskHandle;
 const osThreadAttr_t ScreenTask_attributes = {
   .name = "ScreenTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal5,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for CommTask */
 osThreadId_t CommTaskHandle;
 const osThreadAttr_t CommTask_attributes = {
   .name = "CommTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for sensorQueueScreen */
 osMessageQueueId_t sensorQueueScreenHandle;
@@ -125,7 +125,7 @@ void MX_FREERTOS_Init(void) {
   sensorQueueScreenHandle = osMessageQueueNew (4, 12, &sensorQueueScreen_attributes);
 
   /* creation of sensorQueueComm */
-  sensorQueueCommHandle = osMessageQueueNew (4, 12, &sensorQueueComm_attributes);
+  sensorQueueCommHandle = osMessageQueueNew (10, 12, &sensorQueueComm_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

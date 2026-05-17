@@ -3,6 +3,7 @@
 #include "senor.h"
 
 extern osMessageQueueId_t sensorQueueScreenHandle;
+extern osMessageQueueId_t sensorQueueCommHandle;
 extern uint16_t AD_Buffer[CHANNEL_NUM * SAMPLE_DEPTH];
 
 static uint16_t Calculate_Temp(uint16_t adc_val) {
@@ -11,7 +12,6 @@ static uint16_t Calculate_Temp(uint16_t adc_val) {
     if (adc_val > 3800) return 50;  // 低于 5℃
 
     // 基于 10K 上拉电阻和 B=3950 的 NTC 的二次曲线拟合
-    // 这种方法比 map() 准得多，且不消耗栈空间（不需 logf）
     float x = (float)adc_val;
     float temp_f = 0.0000035f*x*x - 0.038f*x + 88.5f; 
     
@@ -20,7 +20,17 @@ static uint16_t Calculate_Temp(uint16_t adc_val) {
 void StartSensorTask(void *argument)
 {
     SensorData_t data;
-    AD_Init(); 
+
+    // ADC初始化（校准 + 启动DMA）
+    // 如果失败，会导致传感器数据异常，但不应阻塞系统
+    if (AD_Init() != AD_OK)
+    {
+        // 初始化失败时填充默认安全值，防止下游使用未初始化数据
+        data.brightness = 50;  // 默认中等亮度
+        data.temp = 250;       // 默认 25.0℃
+        data.isTriggered = 0;
+        osMessageQueuePut(sensorQueueScreenHandle, &data, 0, 0);
+    }
 
     for (;;)
     {
@@ -41,13 +51,13 @@ void StartSensorTask(void *argument)
         data.temp = Calculate_Temp(avg_t); 
 
         // 4. 判定逻辑
-        data.isTriggered = (data.brightness < 35 || data.temp > 380) ? 1 : 0;
+        data.isTriggered = (data.brightness < 45 || data.temp > 290) ? 1 : 0;
 
         // 5. 极速响应：通过队列发送
         osMessageQueuePut(sensorQueueScreenHandle, &data, 0, 0);
-
-        // 实时性设置：50ms 刷新一次，系统既流畅又稳
-        osDelay(50); 
+		osMessageQueuePut(sensorQueueCommHandle, &data, 0, 0);
+        // 实时性设置
+        osDelay(500); 
     }
 }
 // NTC 计算函数

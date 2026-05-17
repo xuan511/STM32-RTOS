@@ -1,5 +1,5 @@
-#ifndef __SENOR_H
-#define __SENOR_H
+#ifndef __SENSOR_H
+#define __SENSOR_H
 
 typedef struct
 {

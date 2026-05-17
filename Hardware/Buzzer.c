@@ -48,7 +48,6 @@ static void Buzzer_TimerCallback(void *argument)
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, currentARR / 2);
 }
 
-/* ================= 对外接口 ================= */
 
 void Buzzer_StartAlarm(void)
 {
