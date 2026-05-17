@@ -1,0 +1,27 @@
+# Keil MDK build outputs
+*.o
+*.crf
+*.d
+*.dep
+*.axf
+*.hex
+*.htm
+*.lnp
+*.map
+*.lst
+*.iex
+*.build_log.htm
+RTE/
+DebugConfig/
+
+# Keil project user settings (contains local paths)
+*.uvguix.*
+
+# STM32CubeMX
+.mxproject
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
