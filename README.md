@@ -1,9 +1,11 @@
 # STM32-RTOS 环境监测终端
 
 基于 STM32F103C8T6 + FreeRTOS 的四任务环境监测系统，采集光照强度与温度，通过 OLED 本地显示并支持串口上位机监控。
+
 ## 实物展示
 <img width="1280" height="720" alt="32c3be54d0e3b6142dafd826b3a3dc9a_720" src="https://github.com/user-attachments/assets/d9131027-49c3-449e-8b2f-25f76bf9a02f" />
 
+> 踩坑记录：[调试过程遇到的问题与修复](#调试过程遇到的问题与修复)
 
 ## 系统架构
 
@@ -108,7 +110,7 @@ STM32-RTOS/
 **1. DMA CIRCULAR 循环模式**
 - 双通道 × 10 深度缓冲区，DMA 自动回绕写，CPU 零参与
 - `AD_Init()` 只在任务启动后调用一次，避免重复启动导致 HAL_BUSY
-- 详见 [调试经历：ADC 连续模式卡死排查](docs/adc-debug.md)
+- 详见下文调试过程
 
 **2. NTC 温度计算**
 - 用二次曲线拟合替代 `logf()` 浮点对数运算
@@ -153,7 +155,9 @@ STM32-RTOS/
 | [AD.c](Hardware/AD.c) | ADC 校准 + DMA 启动逻辑 |
 | [Buzzer.c](Hardware/Buzzer.c) | PWM 变频报警实现 |
 | [FreeRTOSConfig.h](Core/Inc/FreeRTOSConfig.h) | 内核参数配置 |
-# ：STM32F103 ADC+DMA 连续模式下系统卡死的排查与修复
+
+
+# ：调试过程遇到的问题与修复
 
 ---
 
